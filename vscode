@@ -1,0 +1,71 @@
+#hsc511
+import streamlit as st
+import requests
+from streamlit_extras.metric_cards import style_metric_cards
+
+# Konfigurasi token dan device
+UBIDOTS_TOKEN = "BBUS-b5UEK7mz0AVxjCxEqviZmJVSBIzjpd"
+DEVICE_LABEL = "esp32-dht-hscr04"
+headers = {
+    "X-Auth-Token": UBIDOTS_TOKEN,
+    "Content-Type": "application/json"
+}
+
+# Fungsi untuk ambil data per variabel
+def get_variable_value(variable):
+    url = f"https://stem.ubidots.com/api/v1.6/devices/{DEVICE_LABEL}/{variable}/lv"
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return float(response.text)
+        else:
+            return None
+    except Exception as e:
+        return None
+
+# UI
+st.set_page_config(page_title="Dashboard Banjir IoT", layout="wide")
+st.title("*Dashboard Monitoring Banjir - IoT ESP32*")
+st.markdown("---")
+
+# Ambil data
+suhu = get_variable_value("suhu")
+kelembapan = get_variable_value("kelembapan")
+jarak = get_variable_value("jarak")
+
+# Tampilkan metrik dalam 3 kolom
+col1, col2, col3 = st.columns(3)
+with col1:
+    if suhu is not None:
+        st.metric("Suhu", f"{suhu:.1f} °C")
+    else:
+        st.error("Gagal ambil data suhu")
+
+with col2:
+    if kelembapan is not None:
+        st.metric("Kelembapan", f"{kelembapan:.1f} %")
+    else:
+        st.error("Gagal ambil data kelembapan")
+
+with col3:
+    if jarak is not None:
+        st.metric("Jarak Air", f"{jarak:.2f} cm")
+    else:
+        st.error("Gagal ambil data jarak")
+
+style_metric_cards(background_color="#f0f2f6", border_left_color="#0e1117", border_color="#d3d3d3")
+
+# Status banjir
+st.markdown("### Status Banjir:")
+if jarak is not None:
+    if jarak < 20:
+        st.error("*Peringatan! Banjir tinggi terdeteksi.*")
+    elif jarak < 50:
+        st.warning("*Waspada! Permukaan air meningkat.*")
+    else:
+        st.success("*Aman. Tidak ada banjir terdeteksi.*")
+else:
+    st.info("Status tidak tersedia.")
+
+st.markdown("---")
+st.caption("Data diperoleh secara real-time dari ESP32 dan Ubidots.")
